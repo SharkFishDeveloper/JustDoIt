@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "183337893534",
+    "project_id": "quotepush-47d9c",
+    "storage_bucket": "quotepush-47d9c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:183337893534:android:a6c9c7a3466d460a19058f",
+        "android_client_info": {
+          "package_name": "com.justdoit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5J9a9hG_RaJd4c4CO7gMXFZqUlN8E-Cs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
