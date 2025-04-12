@@ -12,6 +12,7 @@
   "dependencies": {
     "@react-native-firebase/app": "^21.13.0",
     "@react-native-firebase/messaging": "^21.13.0",
+    "@react-native-google-signin/google-signin": "^13.2.0",
     "react": "19.0.0",
     "react-native": "^0.79.0"
   },
