@@ -12,7 +12,20 @@
           "package_name": "com.justdoit"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "183337893534-0ukfr33346v20ep5oub3puhinju4najl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.justdoit",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "183337893534-uh3p8k550ln34tuhkk4a45pappvfg1q8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC5J9a9hG_RaJd4c4CO7gMXFZqUlN8E-Cs"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "183337893534-uh3p8k550ln34tuhkk4a45pappvfg1q8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
