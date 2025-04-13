@@ -1,18 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Text } from 'react-native';
+import { Button, Image, Text, View } from 'react-native';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
-
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {userAtomStore } from './atoms/userAtom';
 
 export default function App() {
-  const [userInfo, setUserInfo] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { userInfo, setUserInfo, deleteUserInfo } = userAtomStore();
 
   useEffect(() => {
+
     GoogleSignin.configure({
       webClientId: '183337893534-uh3p8k550ln34tuhkk4a45pappvfg1q8.apps.googleusercontent.com',
-      // offlineAccess: true,
     });
-  }, []);
+
+    const checkLogin = async () => {
+      const token = await AsyncStorage.getItem('authToken');
+      if (token) {
+        const user = await AsyncStorage.getItem('userInfo');
+        if (user) {
+          setUserInfo(JSON.parse(user));
+        }
+      }
+      setIsLoading(false);
+    };
+
+    checkLogin();
+  }, [setUserInfo]);
 
 
 
@@ -20,30 +34,80 @@ export default function App() {
     try {
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
-      setUserInfo(response);
-      console.log('User Info:', response);
+      if (response.data?.user) {
+        const { name, email, photo: imageUrl } = response.data.user;
+        setUserInfo({
+          name: name || '',
+          email: email || '',
+          imageUrl: imageUrl || '',
+        });
+
+        // axios reaquest to backend to save user
+        await AsyncStorage.setItem('userInfo', JSON.stringify({
+          name,
+          email,
+          imageUrl: imageUrl, // not "photo"
+        }));
+        await AsyncStorage.setItem('authToken', response.data.idToken as string);
+
+      }
     } catch (error) {
-      // if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-      //   console.log('User cancelled the login flow');
-      // } else if (error.code === statusCodes.IN_PROGRESS) {
-      //   console.log('Sign in is in progress already');
-      // } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-      //   console.log('Play services not available or outdated');
-      // } else {
-        console.log('Some other error happened:', error);
-      // }
+        // console.log('Some other error happened:', error);
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await GoogleSignin.signOut();
+      await AsyncStorage.removeItem('authToken');
+      await AsyncStorage.removeItem('userInfo');
+      deleteUserInfo();
+    } catch (error) {
+      console.log('Sign out error:', error);
     }
   };
 
 
 
+
+  if (isLoading) {
+    return <Text>Loading...</Text>;
+  }
+
   return (
-      <Text>
+    <View style={{ padding: 20 }}>
+      <Text>User - {JSON.stringify(userInfo)}</Text>
+      {userInfo ? (
+        <>
+          <Text>Welcome, {userInfo.name}</Text>
+          <Text>Email: {userInfo.email}</Text>
+          {userInfo.imageUrl ? (
+            <Image
+              source={{ uri: userInfo.imageUrl }}
+              style={{ width: 100, height: 100, borderRadius: 50, marginVertical: 10 }}
+            />
+          ) : null}
+          <Button title="Sign out" onPress={signOut} />
+        </>
+      ) : (
         <Button title="Sign in with Google" onPress={signIn} />
-        <Text>USER </Text>
-      </Text>
+      )}
+    </View>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
   // const [fcm_token, setFcm_token] = useState<string|null>(null);
