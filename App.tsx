@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Image, Text, View } from 'react-native';
+import { Alert, Button, Image, StyleSheet, Text, View } from 'react-native';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {userAtomStore } from './atoms/userAtom';
+import { fcmAtomStore } from './atoms/fcmAtom';
+import { gettoken } from './utils/getFCMtoken';
+import { requestUserPermission } from './utils/getUserPermission';
+import messaging from '@react-native-firebase/messaging';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const { userInfo, setUserInfo, deleteUserInfo } = userAtomStore();
+  const { fcmInfo, setFcmInfo} = fcmAtomStore();
+
+
 
   useEffect(() => {
 
@@ -14,6 +21,14 @@ export default function App() {
       webClientId: '183337893534-uh3p8k550ln34tuhkk4a45pappvfg1q8.apps.googleusercontent.com',
     });
 
+   const getPermissonAndFcmToken = async()=>{
+    requestUserPermission();
+    const fcmToken = await gettoken();
+    setFcmInfo(fcmToken);
+  };
+
+
+    // Checking login
     const checkLogin = async () => {
       const token = await AsyncStorage.getItem('authToken');
       if (token) {
@@ -26,10 +41,21 @@ export default function App() {
     };
 
     checkLogin();
-  }, [setUserInfo]);
+    getPermissonAndFcmToken();
+
+      const unsubscribe = messaging().onMessage(async remoteMessage => {
+      Alert.alert(
+        `${remoteMessage.notification?.title}|| ''`,
+        `${remoteMessage.notification?.body || ''}`
+      );
+    });
+    return unsubscribe;
 
 
+  }, [setFcmInfo, setUserInfo]);
 
+
+   // Doing signin
   const signIn = async () => {
     try {
       await GoogleSignin.hasPlayServices();
@@ -52,7 +78,7 @@ export default function App() {
 
       }
     } catch (error) {
-        // console.log('Some other error happened:', error);
+        Alert.alert('Please try again after some time');
     }
   };
 
@@ -69,22 +95,21 @@ export default function App() {
 
 
 
-
   if (isLoading) {
     return <Text>Loading...</Text>;
   }
 
   return (
-    <View style={{ padding: 20 }}>
-      <Text>User - {JSON.stringify(userInfo)}</Text>
+    <View style={styles.container}>
+        <Text>FCM - {fcmInfo}</Text>
       {userInfo ? (
         <>
-          <Text>Welcome, {userInfo.name}</Text>
-          <Text>Email: {userInfo.email}</Text>
+          <Text style={styles.text}>Welcome, {userInfo.name}</Text>
+          <Text style={styles.text}>Email: {userInfo.email}</Text>
           {userInfo.imageUrl ? (
             <Image
               source={{ uri: userInfo.imageUrl }}
-              style={{ width: 100, height: 100, borderRadius: 50, marginVertical: 10 }}
+              style={styles.profileImage}
             />
           ) : null}
           <Button title="Sign out" onPress={signOut} />
@@ -97,45 +122,19 @@ export default function App() {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-  // const [fcm_token, setFcm_token] = useState<string|null>(null);
-  // const [userInfo, setUserInfo] = useState(null);
-  // const [loginTokenValue,setLoginTokenValue] = useState<string|null>(null);
-
-  // const getPermissonAndFcmToken = async()=>{
-  //   requestUserPermission();
-  //   const fcmToken = await gettoken();
-  //   setFcm_token(fcmToken);
-  // };
-
-
-
-  // useEffect(()=>{
-  //   getPermissonAndFcmToken();
-
-  //   const loginTokenFunction = async()=>{
-  //      setLoginTokenValue(await getLoginToken());
-  //   };
-
-
-
-  //   loginTokenFunction();
-
-  //   const unsubscribe = messaging().onMessage(async remoteMessage => {
-  //     Alert.alert('A new FCM message arrived!', JSON.stringify(remoteMessage));
-  //   });
-  //   return unsubscribe;
-  // },[]);
+const styles = StyleSheet.create({
+  container: {
+    padding: 20,
+  },
+  text: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginVertical: 10,
+  },
+});
 
