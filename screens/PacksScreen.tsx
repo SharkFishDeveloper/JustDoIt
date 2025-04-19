@@ -9,9 +9,19 @@ import axios from 'axios';
 import { PACKS } from '../utils/Packs';
 
 const PacksScreen = () => {
-    const { deleteUserInfo } = userAtomStore();
+    const {userInfo, deleteUserInfo } = userAtomStore();
 
     const buyButton = async(packId:string)=>{
+        const alreadyPurchased = userInfo?.purchasePack.some((pack) => pack.id === packId);
+
+        if (alreadyPurchased) {
+          return Toast.show({
+            type: 'error',
+            text1: 'Purchase error',
+            text2: 'Item already bought',
+            position: 'bottom',
+          });
+        }
         try {
         const token = await AsyncStorage.getItem('authToken');
         if(!token || token === undefined){

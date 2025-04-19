@@ -9,5 +9,5 @@ export  interface UserInterface{
     name:string,
     email:string,
     imageUrl:string,
-    purchasePack:PurchasedPack
+    purchasePack:PurchasedPack[]
 }

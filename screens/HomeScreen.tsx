@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Dimensions,
   Alert,
   ScrollView,
+  TextInput,
 } from 'react-native';
 import { userAtomStore } from '../atoms/userAtom';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
@@ -15,12 +16,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fcmAtomStore } from '../atoms/fcmAtom';
 import axios from 'axios';
 import { BACKEND_URL } from '../utils/BACKEND_URL';
+import { PurchasedPack } from '../interface/userInterface';
+import Toast from 'react-native-toast-message';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
+
   const { userInfo, setUserInfo, deleteUserInfo } = userAtomStore();
   const { fcmInfo } = fcmAtomStore();
+  const [editingPackId, setEditingPackId] = useState<string | null>(null);
 
   const signOut = async () => {
     try {
@@ -66,6 +71,91 @@ export default function HomeScreen() {
     }
   };
 
+  const capitalizeFirstLetter = (text?: string) => {
+    if (!text) {return 'Untitled Pack';}
+    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+  };
+
+  const updatePack = async (updatedPack: PurchasedPack) => {
+    try {
+      if(updatedPack.dailyMoodLevel && updatedPack.dailyMoodLevel?.length >= 10){
+        return Toast.show({
+          type: 'error',
+          text1: 'Edit error',
+          text2: 'Moode level length is greater than 10',
+          position: 'bottom',
+        });
+      }
+      if(updatedPack.notificationMood && updatedPack.notificationMood?.length >= 15){
+        return Toast.show({
+          type: 'error',
+          text1: 'Edit error',
+          text2: 'Notification mood cannot be greater than 15',
+          position: 'bottom',
+        });
+      }
+      if(updatedPack.notificationTopic && updatedPack.notificationTopic?.length >= 15){
+        return Toast.show({
+          type: 'error',
+          text1: 'Edit error',
+          text2: 'Notification topic cannot be greater than 15',
+          position: 'bottom',
+        });
+      }
+      const token = await AsyncStorage.getItem('authToken');
+      const response = await axios.put(
+        `${BACKEND_URL}/update`,
+        {
+          updatedPack,
+        },
+        {
+          headers: {
+            Authorization: `${token}`,
+          },
+        }
+      );
+      if (response.status === 200 && userInfo) {
+
+        const updatedPacks = userInfo.purchasePack.map((pack) =>
+          pack.id === updatedPack.id ? { ...pack, ...updatedPack } : pack
+        );
+
+        setUserInfo({
+          ...userInfo,
+          purchasePack: updatedPacks,
+        });
+
+
+        return Toast.show({
+            type: 'success',
+            text1: 'Success',
+            text2: 'Made changes successfully',
+            position: 'bottom',
+        });
+      }
+    } catch (err) {
+      // @ts-ignore
+      if (error.response && error.response.status === 300) {
+        return Toast.show({
+          type: 'error',
+          text1: 'Authentication',
+          text2: 'Please sign in again',
+          position: 'bottom',
+        });
+      }
+      Toast.show({
+        type: 'error',
+        text1: 'Something went wrong',
+        text2: 'Please try again later',
+        position: 'bottom',
+      });
+    }finally{
+      setEditingPackId(null);
+    }
+  };
+
+
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
@@ -87,26 +177,91 @@ export default function HomeScreen() {
         <Text style={styles.buttonText}>{userInfo ? 'Logout' : 'Sign In'}</Text>
       </TouchableOpacity>
 
-      {userInfo?.purchasePack?.length > 0 && (
+      {userInfo?.purchasePack && userInfo?.purchasePack?.length > 0 && (
         <View style={styles.packSection}>
           <Text style={styles.title}>Purchased Packs</Text>
           {userInfo.purchasePack.map((pack: any, index: number) => (
-            <View key={index} style={styles.packContainer}>
-              <TouchableOpacity style={styles.editButton}>
-                <Text style={styles.editButtonText}>Edit</Text>
-              </TouchableOpacity>
-              <Text style={styles.packTitle}>{pack.title || 'Untitled Pack'}</Text>
-              {(!pack.content || pack.content.length === 0) && (
-                <Text style={styles.warning}>This pack has no content!</Text>
+
+            <View key={index} style={styles.packContainer} >
+
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() =>
+                      setEditingPackId(prev => (prev === pack.id ? null : pack.id))
+                    }
+                  >
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.packTitle}>{capitalizeFirstLetter(pack.id) || 'Untitled Pack'}</Text>
+                  <Text style={styles.moodLevel}>Daily mood level - {capitalizeFirstLetter(pack.dailyMoodLevel)}</Text>
+<Text style={styles.notificationTopic}>Notification topic - {capitalizeFirstLetter(pack.notificationTopic)}</Text>
+<Text style={styles.notificationMood}>Notification mood - {capitalizeFirstLetter(pack.notificationMood)}</Text>
+
+              {Object.values(pack).some(value => value === undefined || value === null || value === '') && (
+                <Text style={styles.warning}>This pack has incomplete or missing fields!</Text>
               )}
-              {/* Display pack content if any */}
               {pack.content?.length > 0 && (
                 <View style={styles.contentContainer}>
-                  {pack.content.map((item: any, idx: number) => (
+                  {pack.map((item: any, idx: number) => (
                     <Text key={idx} style={styles.contentText}>• {item}</Text>
                   ))}
                 </View>
               )}
+
+
+
+
+
+
+                  {editingPackId === pack.id && (
+                    // eslint-disable-next-line react-native/no-inline-styles
+  <View style={{ marginTop: 10 }}>
+    <Text style={styles.editLabel}>Daily Mood Level</Text>
+    <TextInput
+      style={styles.editValue}
+      value={pack.dailyMoodLevel || ''}
+      onChangeText={(text) => {
+        const newPacks = [...userInfo.purchasePack];
+        newPacks[index].dailyMoodLevel = text;
+        setUserInfo({ ...userInfo, purchasePack: newPacks });
+      }}
+      placeholder="Enter mood level"
+    />
+
+    <Text style={styles.editLabel}>Notification Topic</Text>
+    <TextInput
+      style={styles.editValue}
+      value={pack.notificationTopic || ''}
+      onChangeText={(text) => {
+        const newPacks = [...userInfo.purchasePack];
+        newPacks[index].notificationTopic = text;
+        setUserInfo({ ...userInfo, purchasePack: newPacks });
+      }}
+      placeholder="Enter topic"
+    />
+
+    <Text style={styles.editLabel}>Notification Mood</Text>
+    <TextInput
+      style={styles.editValue}
+      value={pack.notificationMood || ''}
+      onChangeText={(text) => {
+        const newPacks = [...userInfo.purchasePack];
+        newPacks[index].notificationMood = text;
+        setUserInfo({ ...userInfo, purchasePack: newPacks });
+      }}
+      placeholder="Enter mood"
+    />
+
+    <TouchableOpacity
+      // eslint-disable-next-line react-native/no-inline-styles
+      style={[styles.button, { marginTop: 10 }]}
+      onPress={() => updatePack(userInfo.purchasePack[index])}
+    >
+      <Text style={styles.buttonText}>Save Changes</Text>
+    </TouchableOpacity>
+  </View>
+)}
             </View>
           ))}
         </View>
@@ -115,7 +270,22 @@ export default function HomeScreen() {
   );
 }
 
+
+
+
+
 const styles = StyleSheet.create({
+  editLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 10,
+    color: '#333',
+  },
+  editValue: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 5,
+  },
   container: {
     paddingTop: '5%',
     paddingHorizontal: 20,
@@ -210,5 +380,23 @@ const styles = StyleSheet.create({
   contentText: {
     fontSize: 14,
     color: '#333',
+  },
+  moodLevel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#343634', // blue-ish
+    marginBottom: 4,
+  },
+  notificationTopic: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#343634', // reddish
+    marginBottom: 4,
+  },
+  notificationMood: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4CAF50', // greenish
+    marginBottom: 4,
   },
 });
