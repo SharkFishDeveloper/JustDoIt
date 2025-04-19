@@ -28,7 +28,7 @@ export default function HomeScreen() {
       await AsyncStorage.removeItem('userInfo');
       deleteUserInfo();
     } catch (error) {
-      console.log('Sign out error:', error);
+      // console.log('Sign out error:', error);
     }
   };
 
@@ -51,6 +51,7 @@ export default function HomeScreen() {
             name: name || '',
             email: email || '',
             imageUrl: imageUrl || '',
+            purchasePack:loginResponse.data.purchasedPacks,
           });
           await AsyncStorage.setItem(
             'userInfo',
@@ -69,7 +70,6 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          {/* <Text>{fcmInfo}</Text> */}
           <Text style={styles.helloText}>
             Hello, <Text style={styles.bold}>{userInfo?.name || 'Guest'}</Text>
           </Text>
