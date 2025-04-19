@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { userAtomStore } from '../atoms/userAtom';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
@@ -19,7 +20,7 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const { userInfo, setUserInfo, deleteUserInfo } = userAtomStore();
-  const { fcmInfo} = fcmAtomStore();
+  const { fcmInfo } = fcmAtomStore();
 
   const signOut = async () => {
     try {
@@ -28,7 +29,7 @@ export default function HomeScreen() {
       await AsyncStorage.removeItem('userInfo');
       deleteUserInfo();
     } catch (error) {
-      // console.log('Sign out error:', error);
+      Alert.alert('Sign out failed', JSON.stringify(error));
     }
   };
 
@@ -39,19 +40,19 @@ export default function HomeScreen() {
       if (response.data?.user) {
         const { name, email, photo: imageUrl } = response.data.user;
 
-        // call backend api
         const body = {
           email,
-          fcmToken:fcmInfo,
+          fcmToken: fcmInfo,
         };
-        const loginResponse = await axios.post(`${BACKEND_URL}/login`,body);
-        if(loginResponse.status === 200){
+
+        const loginResponse = await axios.post(`${BACKEND_URL}/login`, body);
+        if (loginResponse.status === 200) {
           const setToken = loginResponse.data.token;
           setUserInfo({
             name: name || '',
             email: email || '',
             imageUrl: imageUrl || '',
-            purchasePack:loginResponse.data.purchasedPacks,
+            purchasePack: loginResponse.data.purchasedPacks || [],
           });
           await AsyncStorage.setItem(
             'userInfo',
@@ -61,13 +62,12 @@ export default function HomeScreen() {
         }
       }
     } catch (error) {
-      Alert.alert('Please try again after some time',JSON.stringify(error));
+      Alert.alert('Please try again after some time', JSON.stringify(error));
     }
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <View>
           <Text style={styles.helloText}>
@@ -80,13 +80,38 @@ export default function HomeScreen() {
         )}
       </View>
 
-      {/* Centered Button */}
       <TouchableOpacity
         style={styles.button}
-        onPress={async()=>userInfo ? signOut() : await signIn()}>
+        onPress={async () => (userInfo ? signOut() : await signIn())}
+      >
         <Text style={styles.buttonText}>{userInfo ? 'Logout' : 'Sign In'}</Text>
       </TouchableOpacity>
-    </View>
+
+      {userInfo?.purchasePack?.length > 0 && (
+        <View style={styles.packSection}>
+          <Text style={styles.title}>Purchased Packs</Text>
+          {userInfo.purchasePack.map((pack: any, index: number) => (
+            <View key={index} style={styles.packContainer}>
+              <TouchableOpacity style={styles.editButton}>
+                <Text style={styles.editButtonText}>Edit</Text>
+              </TouchableOpacity>
+              <Text style={styles.packTitle}>{pack.title || 'Untitled Pack'}</Text>
+              {(!pack.content || pack.content.length === 0) && (
+                <Text style={styles.warning}>This pack has no content!</Text>
+              )}
+              {/* Display pack content if any */}
+              {pack.content?.length > 0 && (
+                <View style={styles.contentContainer}>
+                  {pack.content.map((item: any, idx: number) => (
+                    <Text key={idx} style={styles.contentText}>• {item}</Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
@@ -94,8 +119,8 @@ const styles = StyleSheet.create({
   container: {
     paddingTop: '5%',
     paddingHorizontal: 20,
-    flex: 1,
     backgroundColor: '#fff',
+    paddingBottom: 100,
   },
   header: {
     width: '100%',
@@ -124,7 +149,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
   button: {
-    marginTop: 40,
+    marginTop: 30,
     backgroundColor: '#222',
     paddingVertical: 12,
     paddingHorizontal: 32,
@@ -136,5 +161,54 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     textAlign: 'center',
+  },
+  packSection: {
+    marginTop: 40,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  packContainer: {
+    width: '100%',
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 12,
+    marginBottom: 20,
+    backgroundColor: '#f9f9f9',
+    position: 'relative',
+  },
+  editButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#222',
+    borderRadius: 6,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 12,
+  },
+  packTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  warning: {
+    color: 'red',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  contentContainer: {
+    marginTop: 10,
+  },
+  contentText: {
+    fontSize: 14,
+    color: '#333',
   },
 });
